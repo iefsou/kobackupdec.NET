@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace kobackupdec
 {
@@ -25,6 +26,9 @@ namespace kobackupdec
             string user_password = args[0];
             string backup_path_in = args[1];
             string dest_path_out = args[2];
+
+            if (!Directory.Exists("./__temp__"))
+                Directory.CreateDirectory("./__temp__");
 
             kobackupdec.decrypt(user_password, backup_path_in, dest_path_out);
         }

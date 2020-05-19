@@ -207,6 +207,11 @@ namespace kobackupdec
                 var output = Path.Combine(outputDir, name);
                 if (size > 0) // ignores directory entries
                 {
+                    int lastColonIndex = output.LastIndexOf(":");
+                    if (lastColonIndex > 1)
+                    {
+                        output = output.Substring(0, 2) + output.Substring(2).Replace(":", "");
+                    }
                     if (!Directory.Exists(Path.GetDirectoryName(output)))
                         Directory.CreateDirectory(Path.GetDirectoryName(output));
                     using (var str = File.Open(output, FileMode.OpenOrCreate, FileAccess.Write))
@@ -378,7 +383,7 @@ namespace kobackupdec
                 foreach (string entry in tar_files)
                 {
                     Console.WriteLine("working on " + Path.GetFileName(entry));
-                    byte[] cleartext = null;
+                    string cleartext = null;
                     string directory = Path.GetDirectoryName(entry);
                     string filename = Path.GetFileNameWithoutExtension(entry);
                     string skey = Path.Combine(directory, filename);
@@ -392,7 +397,7 @@ namespace kobackupdec
 
                     if (cleartext != null)
                     {
-                        using (MemoryStream ms = new MemoryStream(cleartext))
+                        using (FileStream ms = new FileStream(cleartext, FileMode.Open, FileAccess.Read))
                         {
                             TAR_Extract(ms, data_app_dir);
                         }
@@ -422,7 +427,7 @@ namespace kobackupdec
                 foreach (string entry in db_files)
                 {
                     Console.WriteLine("working on " + Path.GetFileName(entry));
-                    byte[] cleartext = null;
+                    string cleartext = null;
                     string directory = Path.GetDirectoryName(entry);
                     string filename = Path.GetFileNameWithoutExtension(entry);
                     string skey = Path.Combine(directory, filename);
@@ -437,7 +442,8 @@ namespace kobackupdec
                     if (cleartext != null)
                     {
                         string dest_file = Path.Combine(data_app_dir, Path.GetFileName(entry));
-                        File.WriteAllBytes(dest_file, cleartext);
+                        File.Copy(cleartext, dest_file);
+                        //File.WriteAllBytes(dest_file, cleartext);
                     }
                 }
 
@@ -963,7 +969,7 @@ namespace kobackupdec
             }
         }
 
-        internal byte[] decrypt_package(DecryptMaterial dec_material, byte[] data)
+        internal string decrypt_package(DecryptMaterial dec_material, byte[] data)
         {
             if (this.good == false)
                 Console.WriteLine("well, it is hard to decrypt with a wrong key.");
@@ -979,11 +985,14 @@ namespace kobackupdec
 
             byte[] key = PBKDF2_SHA256_GetBytes(Encoding.UTF8.GetBytes(this._bkey), salt, Decryptor.dklen, Decryptor.count);
 
-            MemoryStream output = new MemoryStream();
+            string filename = @"./__temp__/" + Guid.NewGuid().ToString();
+            FileStream output = new FileStream(filename, FileMode.CreateNew, FileAccess.Write);
             MemoryStream input = new MemoryStream(data);
             AES_CTR_Transform(key, counter_iv, input, output);
+            output.Dispose();
+            output.Close();
 
-            return output.ToArray();
+            return filename;
         }
 
         internal byte[] decrypt_file(DecryptMaterial dec_material, byte[] data)
